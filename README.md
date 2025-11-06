@@ -1,15 +1,16 @@
-# Mastodon Beiträge-Statistik Tool
+# Mastodon Post-Statistik Tool
 
-Ein einfaches Python-Tool, das Mastodon-Posting-Aktivität analysiert und übersichtlich in der Kommandozeile darstellt.
+Ein einfaches Python-Tool, das deine Mastodon-Posting-Aktivität analysiert und übersichtlich in der Kommandozeile darstellt.
 
 ## Features
 
 - 📊 Zeigt Posts pro Monat seit Account-Erstellung
 - 📅 Optional nur aktuellen Monat anzeigen
 - 📈 Visuelles Balkendiagramm in der Konsole
+- 🔒 **Unterstützt Authentifizierung für private/unlisted Posts**
 - 🔄 Automatische Pagination für große Post-Mengen
 - ❌ Boosts werden automatisch herausgefiltert (nur eigene Posts)
-- 🔓 Keine Authentifizierung nötig (nutzt öffentliche API)
+- 🔓 Funktioniert auch ohne Authentifizierung für öffentliche Profile
 
 ## Installation
 
@@ -24,52 +25,88 @@ Ein einfaches Python-Tool, das Mastodon-Posting-Aktivität analysiert und übers
 pip install requests
 ```
 
+## Authentifizierung einrichten (optional)
+
+Um auch nicht-öffentliche Posts (unlisted, followers-only, private) zu analysieren, benötigst du einen Access Token:
+
+### Access Token erstellen
+
+1. Gehe auf deine Mastodon-Instanz → **Einstellungen** → **Entwicklung**
+2. Klicke auf **Neue Anwendung**
+3. Name: z.B. "Stats Tool"
+4. Berechtigungen: **Nur `read:accounts` und `read:statuses` aktivieren**
+5. Speichern und den generierten **Access Token** kopieren
+
+### Token sicher verwenden
+
+**Empfohlen: Via Umgebungsvariable**
+```bash
+export MASTODON_TOKEN="dein_access_token_hier"
+```
+
+Dann kannst du das Tool ohne Token-Parameter nutzen.
+
 ## Verwendung
 
-### Grundlegende Syntax
+### Öffentliche Profile (ohne Authentifizierung)
 
 ```bash
-python mastodon_stats.py <username> [optionen]
-```
-
-### Beispiele
-
-**Statistik für einen User auf mastodon.social:**
-```bash
+# User auf mastodon.social
 python mastodon_stats.py john
-```
 
-**User auf einer anderen Instanz:**
-```bash
+# User auf anderer Instanz
 python mastodon_stats.py maria -i chaos.social
-```
 
-**Nur aktuellen Monat anzeigen:**
-```bash
+# Nur aktueller Monat
 python mastodon_stats.py john -c
 ```
 
-**Vollständiges Beispiel mit allen Optionen:**
+### Eigener Account mit Authentifizierung
+
+**Via Umgebungsvariable (empfohlen):**
 ```bash
-python mastodon_stats.py alice -i fosstodon.org --current
+export MASTODON_TOKEN="dein_token"
+python mastodon_stats.py -i deine.instanz
 ```
+
+**Via Parameter:**
+```bash
+python mastodon_stats.py -i deine.instanz -t "dein_token"
+```
+
+**Nur aktueller Monat:**
+```bash
+python mastodon_stats.py -i deine.instanz -c
+```
+
+### Anderen Account mit Authentifizierung
+
+```bash
+python mastodon_stats.py username -i instanz -t "dein_token"
+```
+
+Dies zeigt alle Posts, die für dich sichtbar sind (z.B. wenn du dem Account folgst).
 
 ## Parameter
 
 | Parameter | Kurzform | Beschreibung | Standard |
 |-----------|----------|--------------|----------|
-| `username` | - | Benutzername (ohne @ und Instanz) | *erforderlich* |
+| `username` | - | Benutzername (ohne @ und Instanz). Optional bei `--token` für eigenen Account | *optional* |
 | `--instance` | `-i` | Mastodon-Instanz | `mastodon.social` |
 | `--current` | `-c` | Nur aktuellen Monat anzeigen | `False` |
+| `--token` | `-t` | Access Token für private Posts | `None` |
+
+**Umgebungsvariable:** `MASTODON_TOKEN` wird automatisch erkannt, wenn gesetzt.
 
 ## Ausgabeformat
 
 ### Vollständige Statistik
 
 ```
-Suche Benutzer @john@mastodon.social...
+Rufe eigenen Account von chaos.social ab...
+Account: @maria
 Account erstellt am: 2022-11-15
-Lade Posts...
+Lade Posts (inkl. nicht-öffentliche)...
 
 ═══════════════════════════════════
   Statistik: Posts pro Monat
@@ -94,18 +131,44 @@ Lade Posts...
 ═══════════════════════════════════
 ```
 
+## Authentifizierung vs. Öffentlich
+
+| Modus | Was wird angezeigt |
+|-------|-------------------|
+| **Ohne Token** | Nur öffentliche Posts |
+| **Mit Token (eigener Account)** | Alle eigenen Posts (public, unlisted, followers-only, private) |
+| **Mit Token (fremder Account)** | Alle Posts, die für dich sichtbar sind |
+
 ## Technische Details
 
-- Nutzt die öffentliche Mastodon API (v1)
+- Nutzt die Mastodon API v1
 - Balkendiagramm: Jeder Block (█) = 2 Posts, maximale Breite bei 100 Posts
 - Boosts (Reblogs) werden nicht mitgezählt
 - Pagination wird automatisch durchgeführt (40 Posts pro Request)
+- Token-Berechtigungen: `read:accounts`, `read:statuses`
 
-## Einschränkungen
+## Sicherheit
 
-- Funktioniert nur mit öffentlichen Profilen
-- Zeigt nur öffentliche Posts an
-- API-Rate-Limits der jeweiligen Instanz gelten
+⚠️ **Wichtig:**
+- Speichere deinen Access Token nie in Skripten oder Git-Repositories
+- Nutze Umgebungsvariablen für den Token
+- Setze nur minimal nötige Berechtigungen (read-only)
+- Du kannst den Token jederzeit in den Mastodon-Einstellungen widerrufen
+
+## Beispiel-Workflow
+
+```bash
+# 1. Token als Umgebungsvariable setzen (einmalig pro Session)
+export MASTODON_TOKEN="dein_super_geheimer_token"
+
+# 2. Verschiedene Accounts analysieren
+python mastodon_stats.py -i mastodon.social    # Eigener Account
+python mastodon_stats.py alice -i chaos.social  # Fremder Account
+python mastodon_stats.py -i mastodon.social -c  # Nur aktueller Monat
+
+# 3. Token aus Environment entfernen (optional)
+unset MASTODON_TOKEN
+```
 
 ## Lizenz
 

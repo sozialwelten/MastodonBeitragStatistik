@@ -8,33 +8,66 @@ import requests
 from collections import defaultdict
 from datetime import datetime
 import argparse
+import os
 
 
-def get_user_stats(instance, username, current_month_only=False):
+def get_access_token_from_env():
+    """Liest Access Token aus Umgebungsvariable."""
+    return os.environ.get('MASTODON_TOKEN')
+
+
+def get_user_stats(instance, username=None, access_token=None, current_month_only=False):
     """
     Ruft Statistiken über Posts eines Mastodon-Users ab.
 
     Args:
         instance: Mastodon-Instanz (z.B. 'mastodon.social')
-        username: Benutzername
+        username: Benutzername (None bei Authentifizierung für eigenen Account)
+        access_token: Mastodon Access Token für private Posts
         current_month_only: Nur aktuellen Monat anzeigen
     """
-    # Zuerst User-ID finden
-    print(f"Suche Benutzer @{username}@{instance}...")
-    search_url = f"https://{instance}/api/v1/accounts/lookup"
-    params = {'acct': username}
+    headers = {}
+    if access_token:
+        headers['Authorization'] = f'Bearer {access_token}'
 
-    try:
-        response = requests.get(search_url, params=params)
-        response.raise_for_status()
-        user_data = response.json()
-        user_id = user_data['id']
-        created_at = user_data['created_at']
-        print(f"Account erstellt am: {created_at[:10]}")
-        print(f"Lade Posts...\n")
-    except requests.exceptions.RequestException as e:
-        print(f"Fehler beim Abrufen der Benutzerdaten: {e}")
-        return
+    # Bei Authentifizierung: Eigenen Account abrufen
+    if access_token and not username:
+        print(f"Rufe eigenen Account von {instance} ab...")
+        verify_url = f"https://{instance}/api/v1/accounts/verify_credentials"
+        try:
+            response = requests.get(verify_url, headers=headers)
+            response.raise_for_status()
+            user_data = response.json()
+            user_id = user_data['id']
+            username = user_data['username']
+            created_at = user_data['created_at']
+            print(f"Account: @{username}")
+            print(f"Account erstellt am: {created_at[:10]}")
+            print(f"Lade Posts (inkl. nicht-öffentliche)...\n")
+        except requests.exceptions.RequestException as e:
+            print(f"Fehler bei der Authentifizierung: {e}")
+            print("Prüfe, ob dein Access Token korrekt ist.")
+            return
+    else:
+        # Öffentlicher Account-Lookup
+        print(f"Suche Benutzer @{username}@{instance}...")
+        search_url = f"https://{instance}/api/v1/accounts/lookup"
+        params = {'acct': username}
+
+        try:
+            response = requests.get(search_url, params=params, headers=headers)
+            response.raise_for_status()
+            user_data = response.json()
+            user_id = user_data['id']
+            created_at = user_data['created_at']
+            print(f"Account erstellt am: {created_at[:10]}")
+            if access_token:
+                print(f"Lade Posts (inkl. nicht-öffentliche)...\n")
+            else:
+                print(f"Lade öffentliche Posts...\n")
+        except requests.exceptions.RequestException as e:
+            print(f"Fehler beim Abrufen der Benutzerdaten: {e}")
+            return
 
     # Posts abrufen
     posts_by_month = defaultdict(int)
@@ -50,7 +83,7 @@ def get_user_stats(instance, username, current_month_only=False):
 
     while url:
         try:
-            response = requests.get(url, params=params)
+            response = requests.get(url, params=params, headers=headers)
             response.raise_for_status()
             posts = response.json()
 
@@ -105,11 +138,13 @@ def get_user_stats(instance, username, current_month_only=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Zeigt Mastodon Post-Statistiken pro Monat an.'
+        description='Zeigt Mastodon Post-Statistiken pro Monat an.',
+        epilog='Tipp: Access Token kann auch via Umgebungsvariable MASTODON_TOKEN übergeben werden.'
     )
     parser.add_argument(
         'username',
-        help='Benutzername (ohne @ und Instanz)'
+        nargs='?',
+        help='Benutzername (ohne @ und Instanz). Optional bei --token ohne Username für eigenen Account.'
     )
     parser.add_argument(
         '-i', '--instance',
@@ -121,10 +156,24 @@ def main():
         action='store_true',
         help='Nur aktuellen Monat anzeigen'
     )
+    parser.add_argument(
+        '-t', '--token',
+        help='Access Token für private Posts (oder nutze Umgebungsvariable MASTODON_TOKEN)'
+    )
 
     args = parser.parse_args()
 
-    get_user_stats(args.instance, args.username, args.current)
+    # Access Token aus Parameter oder Umgebungsvariable
+    access_token = args.token or get_access_token_from_env()
+
+    # Validierung
+    if not access_token and not args.username:
+        parser.error("Username ist erforderlich, außer bei Verwendung mit --token für eigenen Account")
+
+    if access_token and not args.username:
+        print("Authentifizierter Modus: Analysiere eigenen Account\n")
+
+    get_user_stats(args.instance, args.username, access_token, args.current)
 
 
 if __name__ == '__main__':
