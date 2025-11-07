@@ -1,4 +1,4 @@
-# Mastodon Post-Statistik Tool
+# Mastodon Beitrag Statistik
 
 Ein einfaches Python-Tool, das deine Mastodon-Posting-Aktivität analysiert und übersichtlich in der Kommandozeile darstellt.
 
