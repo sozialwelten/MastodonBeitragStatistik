@@ -52,13 +52,13 @@ Dann kannst du das Tool ohne Token-Parameter nutzen.
 
 ```bash
 # User auf mastodon.social
-python mastodon_stats.py john
+python MastodonBeitragStatistik.py john
 
 # User auf anderer Instanz
-python mastodon_stats.py maria -i chaos.social
+python MastodonBeitragStatistik.py maria -i chaos.social
 
 # Nur aktueller Monat
-python mastodon_stats.py john -c
+python MastodonBeitragStatistik.py john -c
 ```
 
 ### Eigener Account mit Authentifizierung
@@ -66,23 +66,23 @@ python mastodon_stats.py john -c
 **Via Umgebungsvariable (empfohlen):**
 ```bash
 export MASTODON_TOKEN="dein_token"
-python mastodon_stats.py -i deine.instanz
+python MastodonBeitragStatistik.py -i deine.instanz
 ```
 
 **Via Parameter:**
 ```bash
-python mastodon_stats.py -i deine.instanz -t "dein_token"
+python MastodonBeitragStatistik.py -i deine.instanz -t "dein_token"
 ```
 
 **Nur aktueller Monat:**
 ```bash
-python mastodon_stats.py -i deine.instanz -c
+python MastodonBeitragStatistik.py -i deine.instanz -c
 ```
 
 ### Anderen Account mit Authentifizierung
 
 ```bash
-python mastodon_stats.py username -i instanz -t "dein_token"
+python mMastodonBeitragStatistik.py username -i instanz -t "dein_token"
 ```
 
 Dies zeigt alle Posts, die für dich sichtbar sind (z.B. wenn du dem Account folgst).
@@ -162,9 +162,9 @@ Lade Posts (inkl. nicht-öffentliche)...
 export MASTODON_TOKEN="dein_super_geheimer_token"
 
 # 2. Verschiedene Accounts analysieren
-python mastodon_stats.py -i mastodon.social    # Eigener Account
-python mastodon_stats.py alice -i chaos.social  # Fremder Account
-python mastodon_stats.py -i mastodon.social -c  # Nur aktueller Monat
+python MastodonBeitragStatistik.py -i mastodon.social    # Eigener Account
+python MastodonBeitragStatistik.py alice -i chaos.social  # Fremder Account
+python MastodonBeitragStatistik.py -i mastodon.social -c  # Nur aktueller Monat
 
 # 3. Token aus Environment entfernen (optional)
 unset MASTODON_TOKEN
